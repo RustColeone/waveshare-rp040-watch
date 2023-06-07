@@ -25,10 +25,13 @@
 #define CONFIG_DISPLAY_UPDATE_RATE_HZ (2u)
 #define CONFIG_BATTERY_UPDATE_RATE_HZ (2u)
 #define CONFIG_WAKEUP_UPDATE_RATE_HZ (4u)
-#define CONFIG_SPEED 32000
+#define CONFIG_SPEED 30000
+#define CONFIG_SLEEP_SPEED 10000
 
 
 bool isDisplaySleep = false;
+int mainButton = 26;
+unsigned long lastCheckTime = 0;
 
 //
 // application state
@@ -75,6 +78,8 @@ int counter = 0;
 repeating_timer timerDisplay;
 repeating_timer timerBattery;
 
+bool SerialMode = true;
+
 
 void drawDot(int pos, int palette);
 void drawClock(uint64_t time);
@@ -84,14 +89,13 @@ void displayTick();
 void wakeupcall();
 
 void SleepCounter(){
-	batteryTick();
 	int sleepTime = 10;
 
 	if(state.counter >= sleepTime){
 		SAFE_STATE_UPDATE(&stateMtx, { state.counter = sleepTime; });
 		display.sleep();
 		isDisplaySleep = true;
-		set_sys_clock_khz(CONFIG_SPEED / 3, false);
+		set_sys_clock_khz(CONFIG_SLEEP_SPEED, false);
 	}
 	SAFE_STATE_UPDATE(&stateMtx, { state.counter += 1; });
 }
@@ -133,11 +137,11 @@ void displayTick() {
 	}
 	
 	if(!isDisplaySleep){
+	    batteryTick();
 		drawClock(count);
 	}
 }
 void wakeupcall(){
-	bool log = false;
 	float accX = state.imu.acc.x;
 	float accY = state.imu.acc.y;
 	float accZ = state.imu.acc.z;
@@ -145,18 +149,12 @@ void wakeupcall(){
 	float gX = state.imu.gyro.x;
 	float gY = state.imu.gyro.y;
 	float gZ = state.imu.gyro.z;
-
-	delay(250);
-	/*
-	if(isDisplaySleep){
-		set_sys_clock_khz(CONFIG_SPEED, true);
-		digitalWrite(24, HIGH);
-	}*/
+    
 	imuTick();
 
 	float sqMagAcc = sq(accX - state.imu.acc.x) + sq(accY - state.imu.acc.y) + sq(accZ - state.imu.acc.z);
 	float sqMagGyro = sq(gX - state.imu.gyro.x) + sq(gY - state.imu.gyro.y) + sq(gZ - state.imu.gyro.z);
-	if(log){
+	if(SerialMode){
 		Serial.print("Acceleration, ");
 		Serial.print(sqMagAcc);
 		Serial.print(" Gyro, ");
@@ -167,17 +165,15 @@ void wakeupcall(){
 		SAFE_STATE_UPDATE(&stateMtx, { state.counter = 0; });
 		delay(250);
 		display.wakeup();
+        displayTick();
 		isDisplaySleep = false;
 	}
 
-	if(CONFIG_SPEED <= 50000){
-		if(counter >= 2){
-			counter = 0;
-			SleepCounter();
-		}else{
-			counter += 1;
-		}
-	}
+	if(counter % 2 == 0){
+        counter = counter % 2;
+        SleepCounter();
+    }
+    counter += 1;
 }
 void displaySetup(){
 	zoom = (float)(std::min(display.width(), display.height())) /
@@ -283,9 +279,12 @@ void displaySetup(){
 
 void setup() {
 	
-	//pinMode(24, OUTPUT);
+	//pinMode(mainButton, INPUT);
+
 	set_sys_clock_khz(CONFIG_SPEED, true);
-  	//Serial.begin(115200);
+    if(SerialMode){
+        Serial.begin(115200);
+    }
 
   	// set up state access mutex
   	mutex_init(&stateMtx);
@@ -310,8 +309,7 @@ void setup() {
 			imu.configureGyro(QMI8658C::GyroScale::GYRO_SCALE_512DPS,
 								QMI8658C::GyroODR::GYRO_ODR_250HZ,
 								QMI8658C::GyroLPF::GYRO_LPF_5_32PCT);
-			attachInterrupt(digitalPinToInterrupt(PIN_IMU_INT2), imuTick,
-							PinStatus::RISING);
+			//attachInterrupt(digitalPinToInterrupt(PIN_IMU_INT2), imuTick, PinStatus::RISING);
 		}
   	}
 
@@ -413,21 +411,13 @@ void drawClock(uint64_t time) {  // 時計の描画
 }
 
 
-
-
 void loop() {
-	wakeupcall();
+    unsigned long currentMillis = millis();
+    if (currentMillis - lastCheckTime >= 250) {
+        lastCheckTime = currentMillis;
+        wakeupcall();
+        //digitalRead(mainButton);
+        //digitalWrite(mainButton, HIGH);
+    }
 }
 
-
-
-
-/*
-//Does not get called when using 50 MHz
-void loop1(){
-	if(CONFIG_SPEED > 50000){
-		delay(1000);
-		SleepCounter();
-	}
-}
-*/
