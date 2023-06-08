@@ -26,7 +26,7 @@
 #define CONFIG_BATTERY_UPDATE_RATE_HZ (2u)
 #define CONFIG_WAKEUP_UPDATE_RATE_HZ (4u)
 #define CONFIG_SPEED 30000
-#define CONFIG_SLEEP_SPEED 10000
+#define CONFIG_SLEEP_SPEED 12000
 
 
 bool isDisplaySleep = false;
@@ -78,7 +78,8 @@ int counter = 0;
 repeating_timer timerDisplay;
 repeating_timer timerBattery;
 
-bool SerialMode = true;
+bool SerialMode = false;
+bool isPowered = false;
 
 
 void drawDot(int pos, int palette);
@@ -87,25 +88,52 @@ void batteryTick();
 void imuTick();
 void displayTick();
 void wakeupcall();
+void quickWakeup(int targetFrequency, int brightness);
 
 void SleepCounter(){
 	int sleepTime = 10;
+
+    if(isPowered){
+        return; //No not sleep when high input
+    }
 
 	if(state.counter >= sleepTime){
 		SAFE_STATE_UPDATE(&stateMtx, { state.counter = sleepTime; });
 		display.sleep();
 		isDisplaySleep = true;
 		set_sys_clock_khz(CONFIG_SLEEP_SPEED, false);
+        if(SerialMode){
+            Serial.print("Putting Device To Sleep at ");
+            Serial.print(CONFIG_SLEEP_SPEED);
+            Serial.print(" kHz while actual is ");
+            Serial.println(rp2040.f_cpu()/1000);
+            
+        }
 	}
+    if(SerialMode){
+        Serial.print("State Counter");
+        Serial.println(state.counter);
+    }
 	SAFE_STATE_UPDATE(&stateMtx, { state.counter += 1; });
 }
 void batteryTick() {
 	battery.update();
-
 	SAFE_STATE_UPDATE(&stateMtx, {
 		battery.voltage((float*)&state.battery.voltage);
 		battery.percentage((float*)&state.battery.percentage);
 	});
+    
+    if(state.battery.voltage >= 4.15){
+        if(!isPowered){
+            quickWakeup(100000, 128);
+        }
+        isPowered = true;
+    }else{
+        if(isPowered){
+            quickWakeup(CONFIG_SPEED, 32);
+        }
+        isPowered = false;
+    }
 }
 void imuTick() {
 	SAFE_STATE_UPDATE(&stateMtx, {
@@ -137,7 +165,6 @@ void displayTick() {
 	}
 	
 	if(!isDisplaySleep){
-	    batteryTick();
 		drawClock(count);
 	}
 }
@@ -160,20 +187,36 @@ void wakeupcall(){
 		Serial.print(" Gyro, ");
 		Serial.println(sqMagGyro);
 	}
+
+    if(isPowered){
+        return;
+    }
+
 	if(sqMagAcc > 4 && sqMagGyro > 200000){
-		set_sys_clock_khz(CONFIG_SPEED, true);
-		SAFE_STATE_UPDATE(&stateMtx, { state.counter = 0; });
-		delay(250);
-		display.wakeup();
-        displayTick();
-		isDisplaySleep = false;
+        quickWakeup(CONFIG_SPEED, 32);
 	}
 
-	if(counter % 2 == 0){
-        counter = counter % 2;
+	if(counter % 4 == 0){
+        counter = counter % 4;
         SleepCounter();
     }
     counter += 1;
+}
+void quickWakeup(int targetFrequency, int brightness){
+    set_sys_clock_khz(targetFrequency, false);
+    if(SerialMode){
+        Serial.print("Setting Frequency to ");
+        Serial.print(targetFrequency);
+        Serial.print(" kHz while actual is ");
+        Serial.println(rp2040.f_cpu()/1000);
+    }
+    SAFE_STATE_UPDATE(&stateMtx, { state.counter = 0; });
+    isDisplaySleep = false;
+    delay(200);
+    displayTick();
+    delay(50);
+    display.wakeup();
+    display.setBrightness(brightness);
 }
 void displaySetup(){
 	zoom = (float)(std::min(display.width(), display.height())) /
@@ -279,7 +322,7 @@ void displaySetup(){
 
 void setup() {
 	
-	//pinMode(mainButton, INPUT);
+	pinMode(mainButton, OUTPUT);
 
 	set_sys_clock_khz(CONFIG_SPEED, true);
     if(SerialMode){
@@ -411,13 +454,19 @@ void drawClock(uint64_t time) {  // 時計の描画
 }
 
 
+bool highlow = true;
 void loop() {
-    unsigned long currentMillis = millis();
-    if (currentMillis - lastCheckTime >= 250) {
-        lastCheckTime = currentMillis;
-        wakeupcall();
-        //digitalRead(mainButton);
-        //digitalWrite(mainButton, HIGH);
+    batteryTick();
+    wakeupcall();
+    //digitalRead(mainButton);
+    highlow = !highlow;
+    digitalWrite(mainButton, highlow);
+    if(isPowered){
+        
     }
+    else if(SerialMode){
+        Serial.println("Is no longer powered");
+    }
+    delay(250);
 }
 
