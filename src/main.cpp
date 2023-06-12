@@ -320,18 +320,31 @@ void displaySetup(){
     display.startWrite();
 }
 
+void SerialAdjustTime(){
+    if (!Serial.available()){
+        return;
+    }
+    String input = Serial.readStringUntil('\n');
+    int colonIndex = input.indexOf(':');
+    if (colonIndex != -1) {
+        String hoursStr = input.substring(0, colonIndex);
+        String minutesStr = input.substring(colonIndex + 1);
+        hoursStr.trim();
+        minutesStr.trim();
+        int totalSeconds = (hoursStr.toInt() * 3600) + (minutesStr.toInt() * 60);
+        count = totalSeconds * 1000;
+    } 
+    else {
+        Serial.println("Invalid input format! Please use 'hh:mm' format.");
+    }
+}
+
 void setup() {
 	
-	pinMode(mainButton, OUTPUT);
-
+	//pinMode(mainButton, OUTPUT);
 	set_sys_clock_khz(CONFIG_SPEED, true);
-    if(SerialMode){
-        Serial.begin(115200);
-    }
-
   	// set up state access mutex
   	mutex_init(&stateMtx);
-
   	// initialize battery adc
   	{ battery.begin(PIN_BAT_ADC); }
 
@@ -361,7 +374,6 @@ void setup() {
 		display.begin(PIN_LCD_SCLK, PIN_LCD_MOSI, PIN_LCD_DC, PIN_LCD_CS,
 					PIN_LCD_RST, PIN_LCD_BL);
 		displaySetup();
-		
 	}
 
 	// attach timer callbacks for regular peripheral updates
@@ -460,12 +472,18 @@ void loop() {
     wakeupcall();
     //digitalRead(mainButton);
     highlow = !highlow;
-    digitalWrite(mainButton, highlow);
+    //digitalWrite(mainButton, highlow);
     if(isPowered){
-        
+        if(!SerialMode){
+            SerialMode = true;
+            Serial.begin(115200);
+        }
+        SerialAdjustTime();
     }
     else if(SerialMode){
-        Serial.println("Is no longer powered");
+        SerialMode = false;
+        Serial.println("Is no longer powered at above 4.2V");
+        Serial.end();
     }
     delay(250);
 }
