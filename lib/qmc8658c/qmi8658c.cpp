@@ -297,3 +297,42 @@ bool QMI8658C::readGyroscope(float* gx, float* gy, float* gz) {
 
   return true;
 }
+
+void QMI8658C::QMI8658_enableWakeOnMotion()
+{
+	unsigned char womCmd[3];
+	enum QMI8658_Interrupt interrupt = QMI8658_Int1;
+	enum QMI8658_InterruptState initialState = QMI8658State_low;
+	enum QMI8658_WakeOnMotionThreshold threshold = QMI8658WomThreshold_high;
+	unsigned char blankingTime = 0x04;
+	const unsigned char blankingTimeMask = 0x3F;
+
+	enable(false, false);
+    configureAcc(AccScale::ACC_SCALE_2G, AccODR::ACC_ODR_31_25HZ, AccLPF::ACC_LPF_DISABLED);
+    sleep_ms(5);
+	womCmd[0] = QMI8658C_REG_CAL1_L; // WoM Threshold: absolute value in mg (with 1mg/LSB resolution)
+	womCmd[1] = 255;
+	womCmd[2] = (unsigned char)interrupt | (unsigned char)initialState | (blankingTime & blankingTimeMask);
+    I2Cdev::writeByte(m_i2cAddress, QMI8658C_REG_CAL1_L, womCmd[1], m_wire);
+    I2Cdev::writeByte(m_i2cAddress, QMI8658C_REG_CAL1_H, womCmd[2], m_wire);
+    I2Cdev::writeByte(m_i2cAddress, QMI8658C_REG_CTRL9, 0x08, m_wire);
+    sleep_ms(5);
+    enable(false, true);
+    sleep_ms(100);
+	// QMI8658_doCtrl9Command(Ctrl9_ConfigureWakeOnMotion);
+	// while(1)
+	//{
+	//	QMI8658_read_reg(QMI8658Register_Status1,&womCmd[0],1);
+	//	if(womCmd[0]&0x01)
+	//		break;
+	// }
+}
+
+void QMI8658C::QMI8658_disableWakeOnMotion()
+{
+	enable(true, true);
+    configureAcc();
+    configureGyro();
+    I2Cdev::writeByte(m_i2cAddress, QMI8658C_REG_CAL1_L, 0, m_wire);
+	// QMI8658_doCtrl9Command(Ctrl9_ConfigureWakeOnMotion);
+}

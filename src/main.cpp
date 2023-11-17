@@ -26,7 +26,9 @@
 #define CONFIG_BATTERY_UPDATE_RATE_HZ (2u)
 #define CONFIG_WAKEUP_UPDATE_RATE_HZ (4u)
 #define CONFIG_SPEED 30000
-#define CONFIG_SLEEP_SPEED 12000
+#define CONFIG_SLEEP_SPEED 1000
+#define IMU_INTERRPUT_1 23
+#define IMU_INTERRPUT_2 24
 
 
 bool isDisplaySleep = false;
@@ -89,6 +91,7 @@ void imuTick();
 void displayTick();
 void wakeupcall();
 void quickWakeup(int targetFrequency, int brightness);
+void WOM_Interrput(uint gpio, uint32_t events);
 
 void SleepCounter(){
 	int sleepTime = 10;
@@ -103,7 +106,9 @@ void SleepCounter(){
 		isDisplaySleep = true;
 		set_sys_clock_khz(CONFIG_SLEEP_SPEED, false);
         if(SerialMode){
-            Serial.print("Putting Device To Sleep at ");
+            Serial.print("Putting Device To Sleep");
+            //sleep_goto_dormant_until_edge_high(23);
+            Serial.print(" at ");
             Serial.print(CONFIG_SLEEP_SPEED);
             Serial.print(" kHz while actual is ");
             Serial.println(rp2040.f_cpu()/1000);
@@ -195,12 +200,6 @@ void wakeupcall(){
 	if(sqMagAcc > 4 && sqMagGyro > 200000){
         quickWakeup(CONFIG_SPEED, 32);
 	}
-
-	if(counter % 4 == 0){
-        counter = counter % 4;
-        SleepCounter();
-    }
-    counter += 1;
 }
 void quickWakeup(int targetFrequency, int brightness){
     set_sys_clock_khz(targetFrequency, false);
@@ -319,7 +318,6 @@ void displaySetup(){
     display.setBrightness(32);
     display.startWrite();
 }
-
 void SerialAdjustTime(){
     if (!Serial.available()){
         return;
@@ -338,8 +336,29 @@ void SerialAdjustTime(){
         Serial.println("Invalid input format! Please use 'hh:mm' format.");
     }
 }
+void WOM_Interrput(uint gpio, uint32_t events){
+    //Set display and clock back on
+    if(!(events&GPIO_IRQ_EDGE_RISE && gpio == IMU_INTERRPUT_1)){
+        return;
+    }
+    if(!isDisplaySleep){
+        return;
+    }
+    sleep_ms(10);
+    display.sleep();
+    sleep_ms(200);
+    quickWakeup(CONFIG_SPEED, 32);
+    isDisplaySleep = false;
+    Serial.println("Forced wakeup from interrupt");
+}
 
 void setup() {
+    Serial.begin(9600);
+    //setup interrupt
+    gpio_init(IMU_INTERRPUT_1);
+    gpio_set_dir(IMU_INTERRPUT_1, GPIO_IN);
+    gpio_pull_down(IMU_INTERRPUT_1);
+    gpio_set_irq_enabled_with_callback(IMU_INTERRPUT_1, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &WOM_Interrput);
 	
 	//pinMode(mainButton, OUTPUT);
 	set_sys_clock_khz(CONFIG_SPEED, true);
@@ -366,6 +385,7 @@ void setup() {
 								QMI8658C::GyroODR::GYRO_ODR_250HZ,
 								QMI8658C::GyroLPF::GYRO_LPF_5_32PCT);
 			//attachInterrupt(digitalPinToInterrupt(PIN_IMU_INT2), imuTick, PinStatus::RISING);
+            imu.QMI8658_enableWakeOnMotion();
 		}
   	}
 
@@ -468,6 +488,7 @@ void drawClock(uint64_t time) {  // 時計の描画
 
 bool highlow = true;
 void loop() {
+    Serial.println(digitalRead(IMU_INTERRPUT_1));
     batteryTick();
     wakeupcall();
     //digitalRead(mainButton);
@@ -476,14 +497,22 @@ void loop() {
     if(isPowered){
         if(!SerialMode){
             SerialMode = true;
-            Serial.begin(115200);
+            Serial.begin(9600);
         }
         SerialAdjustTime();
     }
     else if(SerialMode){
         SerialMode = false;
         Serial.println("Is no longer powered at above 4.2V");
-        Serial.end();
+        //Serial.end();
+    }
+    
+    if(!isPowered){
+        if(counter % 4 == 0){
+            counter = counter % 4;
+            SleepCounter();
+        }
+        counter += 1;
     }
     delay(250);
 }
