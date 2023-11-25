@@ -3,7 +3,7 @@
 #include "battery.hpp"
 
 Battery::Battery() {
-  m_percentageLambda = BATTERY_LAMBDA_PERCENTAGE_LIPO;
+  m_percentageLambda = BATTERY_LAMBDA_PERCENTAGE_LIION;
 }
 
 void Battery::begin(pin_size_t adc_pin) {

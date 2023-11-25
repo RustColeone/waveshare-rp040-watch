@@ -11,21 +11,26 @@
  * | Info        :   Basic version
  *
  ******************************************************************************/
+#include <Arduino.h>
+#include <I2Cdev.h>
 #include <cst816s.h>
 CST816S Touch_CTS816;
 
-void CST816S_I2C_Write(uint8_t reg, uint8_t value)
+void CST816S::CST816S_I2C_Write(uint8_t reg, uint8_t value)
 {
-    DEV_I2C_Write_Byte( CST816_ADDR, reg, value);
+    //DEV_I2C_Write_Byte( CST816_ADDR, reg, value);
+    I2Cdev::writeByte(CST816_ADDR, reg, value, m_wire);
 }
-uint8_t CST816S_I2C_Read(uint8_t reg)
+
+uint8_t CST816S::CST816S_I2C_Read(uint8_t reg)
 {
     uint8_t res;
-    res = DEV_I2C_Read_Byte(CST816_ADDR, reg);
+    //res = DEV_I2C_Read_Byte(CST816_ADDR, reg);
+    I2Cdev::readByte(CST816_ADDR, reg, &res, I2Cdev::readTimeout, m_wire);
     return res;
 }
 
-uint8_t CST816S_WhoAmI()
+uint8_t CST816S::CST816S_WhoAmI()
 {
     if (CST816S_I2C_Read(CST816_ChipID) == 0xB5)
         return true;
@@ -33,34 +38,36 @@ uint8_t CST816S_WhoAmI()
         return false;
 }
 
-void CST816S_Reset()
+void CST816S::CST816S_Reset()
 {
-    DEV_Digital_Write(Touch_RST_PIN, 0);
-    DEV_Delay_ms(100);
-    DEV_Digital_Write(Touch_RST_PIN, 1);
-    DEV_Delay_ms(100);
+    digitalWrite(Touch_RST_PIN, 0);
+    //DEV_Delay_ms(100);
+    sleep_ms(100);
+    digitalWrite(Touch_RST_PIN, 1);
+    //DEV_Delay_ms(100);
+    sleep_ms(100);
 }
 
-uint8_t CST816S_Read_Revision()
+uint8_t CST816S::CST816S_Read_Revision()
 {
     return CST816S_I2C_Read(CST816_FwVersion);
 }
 
-void CST816S_Wake_up()
+void CST816S::CST816S_Wake_up()
 {
-    DEV_Digital_Write(Touch_RST_PIN, 0);
-    DEV_Delay_ms(10);
-    DEV_Digital_Write(Touch_RST_PIN, 1);
-    DEV_Delay_ms(50);
+    digitalWrite(Touch_RST_PIN, 0);
+    sleep_ms(10);
+    digitalWrite(Touch_RST_PIN, 1);
+    sleep_ms(10);
     CST816S_I2C_Write(CST816_DisAutoSleep, 0x01);
 }
 
-void CST816S_Stop_Sleep()
+void CST816S::CST816S_Stop_Sleep()
 {
     CST816S_I2C_Write(CST816_DisAutoSleep, 0x01);
 }
 
-void CST816S_Set_Mode(uint8_t mode)
+void CST816S::CST816S_Set_Mode(uint8_t mode)
 {
     if (mode == CST816S_Point_Mode)
     {
@@ -80,24 +87,25 @@ void CST816S_Set_Mode(uint8_t mode)
         
 }
 
-
-
-uint8_t CST816S_init(uint8_t mode)
+uint8_t CST816S::CST816S_init(uint8_t mode, TwoWire* wire)
 {
+    m_wire = wire;
     uint8_t bRet, Rev;
     CST816S_Reset();
 
     bRet = CST816S_WhoAmI();
     if (bRet)
     {
-        printf("Success:Detected CST816T.\r\n");
+        //printf("Success:Detected CST816T.\r\n");
         Rev = CST816S_Read_Revision();
-        printf("CST816T Revision = %d\r\n", Rev);
+        //printf("CST816T Revision = %d\r\n", Rev);
+        Serial.println("Touch Device CST816T awaken");
         CST816S_Stop_Sleep();
     }
     else
     {
-        printf("Error: Not Detected CST816T.\r\n");
+        //printf("Error: Not Detected CST816T.\r\n");
+        Serial.println("Touch Device CST816T Not Detected");
         return false;
     }
 
@@ -112,7 +120,7 @@ uint8_t CST816S_init(uint8_t mode)
     return true;
 }
 
-CST816S CST816S_Get_Point()
+CST816S CST816S::CST816S_Get_Point()
 {
     uint8_t x_point_h, x_point_l, y_point_h, y_point_l;
     // CST816S_Wake_up();
@@ -122,10 +130,12 @@ CST816S CST816S_Get_Point()
     y_point_l = CST816S_I2C_Read(CST816_YposL);
     Touch_CTS816.x_point = ((x_point_h & 0x0f) << 8) + x_point_l;
     Touch_CTS816.y_point = ((y_point_h & 0x0f) << 8) + y_point_l;
+    x_point = ((x_point_h & 0x0f) << 8) + x_point_l;
+	y_point = ((y_point_h & 0x0f) << 8) + y_point_l;
 
     return Touch_CTS816;
 }
-uint8_t CST816S_Get_Gesture(void)
+uint8_t CST816S::CST816S_Get_Gesture(void)
 {
     uint8_t gesture;
     gesture=CST816S_I2C_Read(CST816_GestureID);

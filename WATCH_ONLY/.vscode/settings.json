@@ -7,6 +7,13 @@
         "ostream": "cpp",
         "stop_token": "cpp",
         "streambuf": "cpp",
-        "cmath": "cpp"
+        "cmath": "cpp",
+        "istream": "cpp",
+        "ratio": "cpp",
+        "system_error": "cpp",
+        "array": "cpp",
+        "tuple": "cpp",
+        "type_traits": "cpp",
+        "utility": "cpp"
     }
 }

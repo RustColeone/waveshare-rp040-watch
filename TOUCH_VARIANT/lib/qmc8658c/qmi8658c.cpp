@@ -99,7 +99,8 @@ bool QMI8658C::begin(TwoWire* wire, uint8_t device_address) {
   enable(true, true);
   configureAcc();
   configureGyro();
-
+  
+  Serial.println("gyroscope and accelerometer awaken");
   return true;
 }
 

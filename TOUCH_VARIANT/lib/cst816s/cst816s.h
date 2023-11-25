@@ -13,9 +13,9 @@
  ******************************************************************************/
 #ifndef __CST816S_H
 #define __CST816S_H
-#include <stdlib.h> //itoa()
-#include <stdio.h>
 
+#include <Arduino.h>
+#include <Wire.h>
 #define CST816_ADDR (0x15)
 
 typedef enum
@@ -80,18 +80,30 @@ typedef enum
 	CST816S_Gesture_Long_Press=0x0c,
 } CST816S_Gesture;
 
-struct CST816S
+
+class CST816S
 {
+    TwoWire* m_wire;
+    public:
 	uint16_t x_point;
 	uint16_t y_point;
 	uint8_t Gesture;
 	uint8_t mode;
-} ;
+
+    uint8_t CST816S_init(uint8_t mode, TwoWire* wire);
+    CST816S CST816S_Get_Point();
+    uint8_t CST816S_Get_Gesture(void);
+    void CST816S_I2C_Write(uint8_t reg, uint8_t value);
+    uint8_t CST816S_I2C_Read(uint8_t reg);
+    uint8_t CST816S_WhoAmI();
+    void CST816S_Reset();
+    uint8_t CST816S_Read_Revision();
+    void CST816S_Wake_up();
+    void CST816S_Stop_Sleep();
+    void CST816S_Set_Mode(uint8_t mode);
+
+};
 
 extern CST816S Touch_CTS816;
-
-uint8_t CST816S_init(uint8_t mode);
-CST816S CST816S_Get_Point();
-uint8_t CST816S_Get_Gesture(void);
 
 #endif

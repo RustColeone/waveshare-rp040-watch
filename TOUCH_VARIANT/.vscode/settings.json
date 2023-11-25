@@ -1,0 +1,23 @@
+{
+    "editor.formatOnSave": false,
+    "files.associations": {
+        "optional": "cpp",
+        "functional": "cpp",
+        "random": "cpp",
+        "ostream": "cpp",
+        "stop_token": "cpp",
+        "streambuf": "cpp",
+        "cmath": "cpp",
+        "array": "cpp",
+        "*.tcc": "cpp",
+        "deque": "cpp",
+        "list": "cpp",
+        "string": "cpp",
+        "unordered_map": "cpp",
+        "vector": "cpp",
+        "string_view": "cpp",
+        "memory": "cpp",
+        "initializer_list": "cpp",
+        "ranges": "cpp"
+    }
+}
