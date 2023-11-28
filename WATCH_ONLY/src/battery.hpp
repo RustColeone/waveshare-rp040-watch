@@ -16,7 +16,11 @@ inline float mapf(float x,
 #define BATTERY_LAMBDA_PERCENTAGE_LIPO \
   [](float v) { return mapf(v, 3.5f, 4.2f, 0.0f, 1.0f); }
 #define BATTERY_LAMBDA_PERCENTAGE_LIION \
-  [](float v) { return mapf(v, 3.0f, 4.2f, 0.0f, 1.0f); }
+  [](float v) { return mapf(v, 3.3f, 4.15f, 0.0f, 1.0f); }
+  //While 3.0 is the actual fully discharged point
+  //3v3 is the point at which the device turns off because of the lack of voltage
+  //4.15 is set to max because 4.2 will be fully charged and the watch enters
+  //adjustment mode for debugging
 
 typedef std::function<float(float voltage)> battery_percentage_lambda_t;
 

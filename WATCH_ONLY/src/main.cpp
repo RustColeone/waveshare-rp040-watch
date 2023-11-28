@@ -80,7 +80,7 @@ int counter = 0;
 repeating_timer timerDisplay;
 repeating_timer timerBattery;
 
-bool debugMode = true;
+bool debugMode = false;
 bool isPowered = false;
 
 
@@ -128,9 +128,13 @@ void batteryTick() {
 		battery.percentage((float*)&state.battery.percentage);
 	});
     //Common rounding technique
-    uint8_t voltage_mv = uint8_t(state.battery.voltage + 0.5) * 1000;
+    uint8_t voltage_deci_v = uint8_t(state.battery.voltage * 10 + 0.5);
     //4200 mv = 4.2V, max possible battery for lithium battery
-    if(voltage_mv >= 4200){
+    if(debugMode){
+        Serial.print("Current battery voltage (deci-Volts) ");
+        Serial.println(voltage_deci_v);
+    }
+    if(voltage_deci_v >= 42){
         if(!isPowered){
             quickWakeup(100000, 128);
         }
@@ -401,13 +405,20 @@ void setup() {
     Serial.begin(115200);
     //Uncomment this to makesure the device start working untill connected
     //Makes life easier
-    //while(!Serial);
-    Serial.println("Watchface");
-    delay(100);
+    
     //setup interrupt with the imu
     gpio_init(IMU_INTERRPUT_1);
     gpio_set_dir(IMU_INTERRPUT_1, GPIO_IN);
     gpio_pull_down(IMU_INTERRPUT_1);
+    delay(100);
+    //If during reset, we read high here
+    //Means we should enter debug mode
+    debugMode = debugMode || digitalRead(IMU_INTERRPUT_1);
+    if(debugMode){
+        while(!Serial);
+        Serial.println("Watchface");
+        delay(100);
+    }
     gpio_set_irq_enabled_with_callback(IMU_INTERRPUT_1, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &WOM_Interrupt);
 	//pinMode(mainButton, OUTPUT);
 	set_sys_clock_khz(CONFIG_SPEED, true);
@@ -500,7 +511,10 @@ void updateBattery() {
 	int y = clockbase.getPivotY() + 60;
 	clockbase.setCursor(x, y);
     // Clears out an area for drawing text
-	clockbase.fillRect(x, y - 15, 65, 25, 1);
+    if(isPowered)
+	    clockbase.fillRect(x-5, y - 15, 70, 25, 2);
+    else
+        clockbase.fillRect(x-5, y - 15, 70, 25, 1);
 	// Print both the voltage and the percentage
     // Comment one of these when using larger font
 	clockbase.printf("%.1f V ", state.battery.voltage);
@@ -574,8 +588,10 @@ void drawClock(uint64_t time) {
 
 bool highlow = true;
 void loop() {
-    Serial.print("Interrupt Read: ");
-    Serial.println(digitalRead(IMU_INTERRPUT_1));
+    if(debugMode){
+        Serial.print("Interrupt Read: ");
+        Serial.println(digitalRead(IMU_INTERRPUT_1));
+    }
     batteryTick();
     //imuTick();
     //wakeupcall();
