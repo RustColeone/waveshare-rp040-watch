@@ -42,7 +42,7 @@ lv_obj_set_align( ui_BatteryVoltageLabel, LV_ALIGN_CENTER );
 lv_label_set_text(ui_BatteryVoltageLabel,"3.3V");
 lv_obj_set_style_text_color(ui_BatteryVoltageLabel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT );
 lv_obj_set_style_text_opa(ui_BatteryVoltageLabel, 255, LV_PART_MAIN| LV_STATE_DEFAULT);
-lv_obj_set_style_text_font(ui_BatteryVoltageLabel, &lv_font_montserrat_20, LV_PART_MAIN| LV_STATE_DEFAULT);
+lv_obj_set_style_text_font(ui_BatteryVoltageLabel, LV_FONT_MONTSERRAT_20, LV_PART_MAIN| LV_STATE_DEFAULT);
 
 ui_DigitalTimeLabel = lv_label_create(ui_Screen1);
 lv_obj_set_width( ui_DigitalTimeLabel, LV_SIZE_CONTENT);  /// 1
@@ -51,7 +51,7 @@ lv_obj_set_align( ui_DigitalTimeLabel, LV_ALIGN_CENTER );
 lv_label_set_text(ui_DigitalTimeLabel,"13  30");
 lv_obj_set_style_text_color(ui_DigitalTimeLabel, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_DEFAULT );
 lv_obj_set_style_text_opa(ui_DigitalTimeLabel, 255, LV_PART_MAIN| LV_STATE_DEFAULT);
-lv_obj_set_style_text_font(ui_DigitalTimeLabel, &lv_font_montserrat_48, LV_PART_MAIN| LV_STATE_DEFAULT);
+lv_obj_set_style_text_font(ui_DigitalTimeLabel, LV_FONT_MONTSERRAT_48, LV_PART_MAIN| LV_STATE_DEFAULT);
 
 ui_ImageArmHour = lv_img_create(ui_Screen1);
 lv_img_set_src(ui_ImageArmHour, &ui_img_armhour_png);
