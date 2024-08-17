@@ -16,9 +16,7 @@ inline float mapf(float x,
 #define BATTERY_LAMBDA_PERCENTAGE_LIPO \
   [](float v) { return mapf(v, 3.5f, 4.2f, 0.0f, 1.0f); }
 #define BATTERY_LAMBDA_PERCENTAGE_LIION \
-  [](float v) { return mapf(v, 3.3f, 4.2f, 0.0f, 1.0f); }
-  //The discharge curve can technically reach 3.0V and usually considered the end
-  //of discharge, but anything lower than 3V3 would not be enough to run our system
+  [](float v) { return mapf(v, 3.0f, 4.2f, 0.0f, 1.0f); }
 
 typedef std::function<float(float voltage)> battery_percentage_lambda_t;
 

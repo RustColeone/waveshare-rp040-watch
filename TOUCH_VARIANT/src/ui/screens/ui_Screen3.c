@@ -64,7 +64,7 @@ lv_obj_set_x( ui_Label7, 0 );
 lv_obj_set_y( ui_Label7, -80 );
 lv_obj_set_align( ui_Label7, LV_ALIGN_CENTER );
 lv_label_set_text(ui_Label7,"Timer");
-lv_obj_set_style_text_font(ui_Label7, LV_FONT_MONTSERRAT_18, LV_PART_MAIN| LV_STATE_DEFAULT);
+lv_obj_set_style_text_font(ui_Label7, &lv_font_montserrat_18, LV_PART_MAIN| LV_STATE_DEFAULT);
 
 lv_obj_add_event_cb(ui_Screen3, ui_event_Screen3, LV_EVENT_ALL, NULL);
 
